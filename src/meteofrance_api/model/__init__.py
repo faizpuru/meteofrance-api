@@ -4,6 +4,7 @@ from .observation import Observation
 from .picture_of_the_day import PictureOfTheDay
 from .place import Place
 from .rain import Rain
+from .snow import Snow
 from .warning import CurrentPhenomenons
 from .warning import Full
 
@@ -15,4 +16,5 @@ __all__ = [
     "Rain",
     "CurrentPhenomenons",
     "Full",
+    "Snow",
 ]

@@ -13,6 +13,7 @@ from .model import Observation
 from .model import PictureOfTheDay
 from .model import Place
 from .model import Rain
+from .model import Snow
 from .session import MeteoFranceSession
 
 # TODO: investigate bulletincote, montagne, etc...
@@ -340,3 +341,19 @@ class MeteoFranceClient:
         )
 
         return PictureOfTheDay({"image_url": image_url, "description": resp.text})
+
+    # TODO: investigate xml : https://webservice.meteofrance.com/
+    # gdss/v1/metronome_bra/blob?sort-results-by=-blob_creation_time&blob_filename=BRA_2.xml&token=__Wj7dVSTjV9YGu1guveLyDq0g7S7TfTjaHBTPTpO0kj8__
+
+    def get_snow_data(self, massif: str) -> Snow:
+        """Retrieve snow data for a specified massif.
+
+        Args:
+            massif: A string representing the identifier of the massif.
+
+        Returns:
+            A Snow instance representing the snow data for the specified massif.
+        """
+        # Send the API request
+        resp = self.session.request("get", "v2/snow", params={"massif": massif})
+        return Snow(resp.json())
