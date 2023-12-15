@@ -181,7 +181,9 @@ class MeteoFranceClient:
     #
     # Rain
     #
-    def get_rain(self, latitude: float, longitude: float, language: str = "fr") -> Rain:
+    def get_rain(
+        self, latitude: float, longitude: float, language: str = "fr"
+    ) -> Optional[Rain]:
         """Retrieve the next 1 hour rain forecast for a given GPS the location.
 
         Results can be fetched in french or english according to the language parameter.
@@ -197,13 +199,21 @@ class MeteoFranceClient:
         Returns:
             A Rain instance representing the next hour rain forecast.
         """
-        # TODO: add protection if no rain forecast for this position
-
         # Send the API request
         resp = self.session.request(
-            "get", "rain", params={"lat": latitude, "lon": longitude, "lang": language}
+            "get",
+            "v3/rain",
+            params={
+                "lat": latitude,
+                "lon": longitude,
+                "lang": language,
+                "formatDate": "timestamp",
+            },
         )
-        return Rain(resp.json())
+        data = resp.json()
+        if data:
+            return Rain(data)
+        return None
 
     #
     # Warning

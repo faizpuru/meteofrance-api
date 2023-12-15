@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Rain in the next hour Python model for the Météo-France REST API."""
+"""Rain Python model for the Météo-France REST API."""
 from datetime import datetime
-from typing import Any
-from typing import Dict
 from typing import List
 from typing import Optional
 from typing import TypedDict
@@ -10,24 +8,47 @@ from typing import TypedDict
 from meteofrance_api.helpers import timestamp_to_dateime_with_locale_tz
 
 
+class Geometry(TypedDict):
+    """Classe pour représenter les données géométriques."""
+
+    type: str
+    coordinates: List[float]
+
+
+class ForecastData(TypedDict):
+    """Describing the data structure of forecast object in the rain data."""
+
+    time: int
+    rain_intensity: int
+    rain_intensity_description: str
+
+
+class RainPropertiesData(TypedDict):
+    """Describing the data structure of properties object in the rain data."""
+
+    altitude: int
+    name: str
+    country: str
+    french_department: str
+    rain_product_available: int
+    timezone: str
+    confidence: int
+    forecast: List[ForecastData]
+
+
 class RainData(TypedDict):
     """Describing the data structure of rain object returned by the REST API."""
 
-    position: Dict[str, Any]
-    updated_on: int
-    forecast: List[Dict[str, Any]]
-    quality: int
+    update_time: int
+    type: str
+    geometry: Geometry
+    properties: RainPropertiesData
 
 
 class Rain:
     """Class to access the results of 'rain' REST API request.
 
-    Attributes:
-        position: A dictionary with metadata about the position of the forecast place.
-        updated_on:  A timestamp as int corresponding to the latest update date.
-        forecast: A list of dictionaries to describe the following next hour rain
-            forecast.
-        quality: An integer. Don't know yet the usage.
+    Attributes are based on the RainData structure.
     """
 
     def __init__(self, raw_data: RainData) -> None:
@@ -40,51 +61,54 @@ class Rain:
         self.raw_data = raw_data
 
     @property
-    def position(self) -> Dict[str, Any]:
-        """Return the position information of the rain forecast."""
-        return self.raw_data["position"]
+    def update_time(self) -> datetime:
+        """Return the update time of the rain data as a datetime object."""
+        return self.timestamp_to_locale_time(self.raw_data["update_time"])
 
     @property
-    def updated_on(self) -> int:
-        """Return the update timestamp of the rain forecast."""
-        return self.raw_data["updated_on"]
+    def geometry(self) -> Geometry:
+        """Return the coordinates of the location."""
+        return self.raw_data["geometry"]
 
     @property
-    def forecast(self) -> List[Dict[str, Any]]:
-        """Return the rain forecast."""
-        return self.raw_data["forecast"]
+    def altitude(self) -> int:
+        """Return the altitude of the location."""
+        return self.raw_data["properties"]["altitude"]
 
     @property
-    def quality(self) -> int:
-        """Return the quality of the rain forecast."""
-        # TODO: don't know yet what is the usage
-        return self.raw_data["quality"]
+    def location_name(self) -> str:
+        """Return the name of the location."""
+        return self.raw_data["properties"]["name"]
 
-    def next_rain_date_locale(self) -> Optional[datetime]:
-        """Estimate the date of the next rain in the Place timezone (Helper).
+    @property
+    def country(self) -> str:
+        """Return the country code of the location."""
+        return self.raw_data["properties"]["country"]
 
-        Returns:
-            A datetime instance representing the date estimation of the next rain within
-            the next hour.
-            If no rain is expected in the following hour 'None' is returned.
+    @property
+    def french_department(self) -> str:
+        """Return the French department code of the location."""
+        return self.raw_data["properties"]["french_department"]
 
-            The datetime use the location timezone.
-        """
-        # search first cadran with rain
-        next_rain = next(
-            (cadran for cadran in self.forecast if cadran["rain"] > 1), None
-        )
+    @property
+    def rain_product_available(self) -> int:
+        """Return the availability status of the rain product."""
+        return self.raw_data["properties"]["rain_product_available"]
 
-        next_rain_dt_local: Optional[datetime] = None
-        if next_rain is not None:
-            # get the time stamp of the first cadran with rain
-            next_rain_timestamp = next_rain["dt"]
-            # convert timestamp in datetime with local timezone
-            next_rain_dt_local = timestamp_to_dateime_with_locale_tz(
-                next_rain_timestamp, self.position["timezone"]
-            )
+    @property
+    def timezone(self) -> str:
+        """Return the timezone of the location."""
+        return self.raw_data["properties"]["timezone"]
 
-        return next_rain_dt_local
+    @property
+    def confidence(self) -> int:
+        """Return the confidence level of the rain data."""
+        return self.raw_data["properties"]["confidence"]
+
+    @property
+    def forecasts(self) -> List[ForecastData]:
+        """Return the list of forecasts."""
+        return self.raw_data["properties"]["forecast"]
 
     def timestamp_to_locale_time(self, timestamp: int) -> datetime:
         """Convert timestamp in datetime with rain forecast location timezone (Helper).
@@ -96,4 +120,23 @@ class Rain:
             A datetime instance corresponding to the timestamp with the timezone of the
                 rain forecast location.
         """
-        return timestamp_to_dateime_with_locale_tz(timestamp, self.position["timezone"])
+        return timestamp_to_dateime_with_locale_tz(timestamp, self.timezone)
+
+    def next_rain_date_locale(self) -> Optional[datetime]:
+        """Return the datetime of the next rain.
+
+        Iterates through the forecasts to find the first occurrence of rain.
+
+        Returns:
+            A datetime instance representing the time of the next rain, or None if no
+            rain is forecasted in the available data.
+        """
+        for forecast in self.forecasts:
+            # Convertir le temps de la prévision en datetime avec le fuseau horaire local
+            forecast_time = self.timestamp_to_locale_time(int(forecast["time"]))
+
+            # Vérifier si l'intensité de la pluie indique de la pluie
+            if forecast["rain_intensity"] > 1:
+                return forecast_time
+
+        return None

@@ -25,6 +25,7 @@ def test_workflow(city: str) -> None:
     # If rain in the hour forecast is available, get it.
     if my_place_weather_forecast.position["rain_product_available"] == 1:
         my_place_rain_forecast = client.get_rain(my_place.latitude, my_place.longitude)
+        assert my_place_rain_forecast is not None
         next_rain_dt = my_place_rain_forecast.next_rain_date_locale()
         if not next_rain_dt:
             rain_status = "No rain expected in the following hour."
