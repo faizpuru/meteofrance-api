@@ -37,7 +37,7 @@ def test_currentphenomenons(requests_mock: Mock) -> None:
     assert isinstance(current_phenomenons.update_time, int)
     assert isinstance(current_phenomenons.end_validity_time, int)
     assert isinstance(current_phenomenons.domain_id, str)
-    assert "phenomenon_id" in current_phenomenons.phenomenons_max_colors[0].keys()
+    assert hasattr(current_phenomenons.phenomenons_max_colors[0], "phenomenon_id")
     assert current_phenomenons.get_domain_max_color() == 3
 
 
@@ -56,7 +56,7 @@ def test_fulls() -> None:
         warning_full.timelaps[0]["timelaps_items"][0]["color_id"] in WARNING_COLOR_LIST
     )
     assert (
-        warning_full.phenomenons_items[0]["phenomenon_max_color_id"]
+        warning_full.phenomenons_items[0].phenomenon_max_color_id
         in WARNING_COLOR_LIST
     )
 
@@ -93,7 +93,7 @@ def test_currentphenomenons_with_coastal_bulletin(
     #     for phenomenon in current_phenomenons.phenomenons_max_colors
     # )
     has_coastal_phenomenon = any(
-        phenomenon["phenomenon_id"] == "9"
+        phenomenon.phenomenon_id == "9"
         for phenomenon in current_phenomenons.phenomenons_max_colors
     )
 
@@ -124,7 +124,7 @@ def test_full_with_coastal_bulletin(
     #     for phenomenon in full_phenomenons.phenomenons_items
     # )
     has_coastal_phenomenon = any(
-        phenomenon["phenomenon_id"] == "9"
+        phenomenon.phenomenon_id == "9"
         for phenomenon in full_phenomenons.phenomenons_items
     )
 

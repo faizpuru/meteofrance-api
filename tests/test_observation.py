@@ -69,7 +69,7 @@ def test_observation_world() -> None:
 def test_observation_place() -> None:
     """Test weather observation results from API (valid result, from place)."""
     client = MeteoFranceClient()
-    observation = client.get_observation_for_place(place=Place(MOUNTAIN_CITY))
+    observation = client.get_observation_for_place(place=Place.from_dict(MOUNTAIN_CITY))
 
     assert str(observation)
 

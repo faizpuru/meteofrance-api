@@ -99,9 +99,9 @@ def readable_phenomenons_dict(
     # Translate phenomenon name and alert level
     for phenomenon in list_phenomenons:
         readable_dict[
-            get_phenomenon_name_from_indice(phenomenon["phenomenon_id"], language)
+            get_phenomenon_name_from_indice(phenomenon.phenomenon_id, language)
         ] = get_warning_text_status_from_indice_color(
-            phenomenon["phenomenon_max_color_id"], language
+            phenomenon.phenomenon_max_color_id, language
         )
     return readable_dict
 
@@ -167,7 +167,5 @@ def timestamp_to_datetime_with_locale_tz(timestamp: int, local_tz: str) -> datet
     Returns:
         Datetime instance corresponding to the timestamp with a timezone.
     """
-    # convert timestamp in datetime with UTC timezone
-    dt_utc = utc.localize(datetime.utcfromtimestamp(timestamp))
-    # convert datetime to local timezone
+    dt_utc = datetime.fromtimestamp(timestamp, tz=utc)
     return dt_utc.astimezone(timezone(local_tz))
