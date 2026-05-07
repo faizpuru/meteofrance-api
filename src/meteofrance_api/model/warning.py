@@ -3,58 +3,32 @@
 For getting weather alerts in metropolitan France and Andorre.
 """
 
+from dataclasses import dataclass
+from dataclasses import field
 from typing import Any
-from typing import TypedDict
 
 
-# Define a custom type for items in the phenomenons_max_colors list
-class PhenomenonMaxColor(TypedDict):
-    """Describing a meteorological phenomenon and its maximum color code.
+@dataclass
+class PhenomenonMaxColor:
+    """A meteorological phenomenon and its maximum alert color code.
 
     Attributes:
-        phenomenon_id (str): A unique identifier for the meteorological phenomenon.
-                             This is kept as a string to match the format provided by
-                             the API and could represent various types of weather
-                             phenomena (e.g., storms, heavy rain, etc.).
-
-        phenomenon_max_color_id (int): An integer representing the maximum alert color
-                                       code associated with the phenomenon. The color
-                                       codes typically indicate the severity or urgency
-                                       of the weather-related alerts or warnings, with
-                                       each color corresponding to a specific level of
-                                       alert.
+        phenomenon_id: Unique identifier for the meteorological phenomenon.
+        phenomenon_max_color_id: Maximum alert color code (1=green, 2=yellow, 3=orange, 4=red).
     """
 
     phenomenon_id: str
     phenomenon_max_color_id: int
 
-
-class WarningCurrentPhenomenonsData(TypedDict):
-    """Describing the data structure of CurrentPhenomenons object from the REST API."""
-
-    update_time: int
-    end_validity_time: int
-    domain_id: str
-    phenomenons_max_colors: list[PhenomenonMaxColor]
+    @classmethod
+    def from_dict(cls, data: dict) -> "PhenomenonMaxColor":
+        return cls(
+            phenomenon_id=data["phenomenon_id"],
+            phenomenon_max_color_id=data["phenomenon_max_color_id"],
+        )
 
 
-class WarningFullData(TypedDict):
-    """Describing the data structure of full object from the REST API."""
-
-    update_time: int
-    end_validity_time: int
-    domain_id: str
-    color_max: int
-    timelaps: list[dict[str, Any]]
-    phenomenons_items: list[PhenomenonMaxColor]
-    advices: list[dict[str, Any]] | None
-    consequences: list[dict[str, Any]] | None
-    max_count_items: Any  # Didn't see any value yet
-    comments: dict[str, Any]
-    text: dict[str, Any] | None
-    text_avalanche: Any  # Didn't see any value yet
-
-
+@dataclass
 class CurrentPhenomenons:
     """Class to access the results of a `warning/currentPhenomenons` REST API request.
 
@@ -62,158 +36,81 @@ class CurrentPhenomenons:
     domains.
 
     Attributes:
-        update_time: A timestamp (as integer) corresponding to the latest update of the
-            phenomenons.
-        end_validity_time: A timestamp (as integer) corresponding to expiration date of
-            the phenomenons.
-        domain_id: A string corresponding do the domain ID of the bulletin. Value is
-            'France' or a department number.
-        phenomenons_max_colors: A list of dictionaries with type of phenomenons and the
-            current alert level.
+        update_time: Timestamp of the latest update of the phenomenons.
+        end_validity_time: Timestamp of the expiration date of the phenomenons.
+        domain_id: Domain ID of the bulletin ('France' or a department number).
+        phenomenons_max_colors: List of phenomenons with their current alert level.
     """
 
-    def __init__(self, raw_data: WarningCurrentPhenomenonsData) -> None:
-        """Initialize a CurrentPhenomenons object.
+    update_time: int
+    end_validity_time: int
+    domain_id: str
+    phenomenons_max_colors: list[PhenomenonMaxColor] = field(default_factory=list)
 
-        Args:
-            raw_data: A dictionary representing the JSON response from
-                'warning/currentPhenomenons' REST API request. The structure is
-                described by the WarningCurrentPhenomenonsData class.
-        """
-        self.raw_data = raw_data
-
-    @property
-    def update_time(self) -> int:
-        """Return the update time of the phenomenons."""
-        return self.raw_data["update_time"]
-
-    @property
-    def end_validity_time(self) -> int:
-        """Return the end of validity time of the phenomenons."""
-        return self.raw_data["end_validity_time"]
-
-    @property
-    def domain_id(self) -> str:
-        """Return the domain ID of the phenomenons."""
-        return self.raw_data["domain_id"]
-
-    @property
-    def phenomenons_max_colors(self) -> list[PhenomenonMaxColor]:
-        """Return the list and colors of the phenomenons."""
-        return self.raw_data["phenomenons_max_colors"]
+    @classmethod
+    def from_api_response(cls, raw_data: dict) -> "CurrentPhenomenons":
+        """Build a CurrentPhenomenons from a v3/warning/currentphenomenons API response."""
+        return cls(
+            update_time=raw_data["update_time"],
+            end_validity_time=raw_data["end_validity_time"],
+            domain_id=raw_data["domain_id"],
+            phenomenons_max_colors=[
+                PhenomenonMaxColor.from_dict(p)
+                for p in raw_data.get("phenomenons_max_colors", [])
+            ],
+        )
 
     def merge_with_coastal_phenomenons(
         self, coastal_phenomenons: "CurrentPhenomenons"
     ) -> None:
-        """Merge the classical phenomenons bulleting with the coastal one.
-
-        Extend the phenomenons_max_colors property with the content of the coastal
-        weather alert bulletin.
-
-        Args:
-            coastal_phenomenons: CurrentPhenomenons instance corresponding to the
-                coastal weather alert bulletin.
-        """
-        # TODO: Add consistency check
-        self.raw_data["phenomenons_max_colors"].extend(
-            coastal_phenomenons.phenomenons_max_colors
-        )
+        """Merge the classical phenomenons bulletin with the coastal one."""
+        self.phenomenons_max_colors.extend(coastal_phenomenons.phenomenons_max_colors)
 
     def get_domain_max_color(self) -> int:
-        """Get the maximum level of alert of a given domain (class helper).
-
-        Returns:
-            An integer corresponding to the status code representing the maximum alert.
-        """
-        max_int_color = max(
-            x["phenomenon_max_color_id"] for x in self.phenomenons_max_colors
-        )
-        return max_int_color
+        """Return the maximum alert level across all phenomenons in the domain."""
+        return max(x.phenomenon_max_color_id for x in self.phenomenons_max_colors)
 
 
+@dataclass
 class Full:
-    """This class allows to access the results of a `warning/full` API command.
+    """Class to access the results of a `warning/full` REST API request.
 
     For a given domain we can access the maximum alert, a timelaps of the alert
     evolution for the next 24 hours, and a list of alerts.
 
-    For coastal department two bulletins are available corresponding to two different
-    domains.
-
     Attributes:
-        update_time: A timestamp (as integer) corresponding to the latest update of the
-            phenomenons.
-        end_validity_time: A timestamp (as integer) corresponding to expiration date of
-            the phenomenons.
-        domain_id: A string corresponding do the domain ID of the bulletin. Value is
-            'France' or a department number.
-        color_max: An integer representing the maximum alert level in the domain.
-        timelaps: A list of dictionaries corresponding to the schedule of each
-            phenomenons in the next 24 hours.
-        phenomenons_items: list of dictionaries corresponding the alert level for each
-            phenomenons type.
+        update_time: Timestamp of the latest update.
+        end_validity_time: Timestamp of the expiration date.
+        domain_id: Domain ID ('France' or a department number).
+        color_max: Maximum alert level in the domain.
+        timelaps: Schedule of each phenomenon for the next 24 hours.
+        phenomenons_items: Alert level for each phenomenon type.
     """
 
-    def __init__(self, raw_data: WarningFullData) -> None:
-        """Initialize a Full object.
+    update_time: int
+    end_validity_time: int
+    domain_id: str
+    color_max: int
+    timelaps: list[dict[str, Any]] = field(default_factory=list)
+    phenomenons_items: list[PhenomenonMaxColor] = field(default_factory=list)
 
-        Args:
-            raw_data: A dictionary representing the JSON response from'warning/full'
-                REST API request. The structure is described by the WarningFullData
-                class.
-        """
-        self.raw_data = raw_data
-
-    @property
-    def update_time(self) -> int:
-        """Return the update time of the full bulletin."""
-        return self.raw_data["update_time"]
-
-    @property
-    def end_validity_time(self) -> int:
-        """Return the end of validity time of the full bulletin."""
-        return self.raw_data["end_validity_time"]
-
-    @property
-    def domain_id(self) -> str:
-        """Return the domain ID of the the full bulletin."""
-        return self.raw_data["domain_id"]
-
-    @property
-    def color_max(self) -> int:
-        """Return the color max of the domain."""
-        return self.raw_data["color_max"]
-
-    @property
-    def timelaps(self) -> list[dict[str, Any]]:
-        """Return the timelaps of each phenomenon for the domain."""
-        return self.raw_data["timelaps"]
-
-    @property
-    def phenomenons_items(self) -> list[PhenomenonMaxColor]:
-        """Return the phenomenon list of the domain."""
-        return self.raw_data["phenomenons_items"]
+    @classmethod
+    def from_api_response(cls, raw_data: dict) -> "Full":
+        """Build a Full from a v3/warning/full API response."""
+        return cls(
+            update_time=raw_data["update_time"],
+            end_validity_time=raw_data["end_validity_time"],
+            domain_id=raw_data["domain_id"],
+            color_max=raw_data["color_max"],
+            timelaps=raw_data.get("timelaps", []),
+            phenomenons_items=[
+                PhenomenonMaxColor.from_dict(p)
+                for p in raw_data.get("phenomenons_items", [])
+            ],
+        )
 
     def merge_with_coastal_phenomenons(self, coastal_phenomenons: "Full") -> None:
-        """Merge the classical phenomenon bulletin with the coastal one.
-
-        Extend the color_max, timelaps and phenomenons_items properties with the content
-            of the coastal weather alert bulletin.
-
-        Args:
-            coastal_phenomenons: Full instance corresponding to the coastal weather
-                alert bulletin.
-        """
-        # TODO: Add consistency check
-        # TODO: Check if other data need to be merged
-
-        # Merge color_max property
-        self.raw_data["color_max"] = max(self.color_max, coastal_phenomenons.color_max)
-
-        # Merge timelaps
-        self.raw_data["timelaps"].extend(coastal_phenomenons.timelaps)
-
-        # Merge phenomenons_items
-        self.raw_data["phenomenons_items"].extend(coastal_phenomenons.phenomenons_items)
-
-    # TODO: check opportunity to complete class
+        """Merge the classical phenomenon bulletin with the coastal one."""
+        self.color_max = max(self.color_max, coastal_phenomenons.color_max)
+        self.timelaps.extend(coastal_phenomenons.timelaps)
+        self.phenomenons_items.extend(coastal_phenomenons.phenomenons_items)
