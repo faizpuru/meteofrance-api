@@ -1,5 +1,6 @@
 """Tests Météo-France module. Rain class."""
 
+from datetime import datetime
 from unittest.mock import Mock
 
 import pytest
@@ -84,6 +85,16 @@ def test_rain_expected(requests_mock: Mock) -> None:
         str(rain.iso_to_locale_time(rain.forecast[3].time))
         == "2020-05-20 19:50:00+02:00"
     )
+
+
+def test_rain_timestamp_to_locale_time(requests_mock: Mock) -> None:
+    """Test conversion of a Unix timestamp to locale datetime on a Rain."""
+    client = MeteoFranceClient()
+    requests_mock.request("get", f"{METEOFRANCE_API_URL}/v3/rain", json=RAIN_V2_RESPONSE)
+    rain = client.get_rain(latitude=48.8075, longitude=2.24028)
+    dt = rain.timestamp_to_locale_time(1591279200)
+    assert isinstance(dt, datetime)
+    assert str(dt) == "2020-06-04 16:00:00+02:00"
 
 
 def test_no_rain_expected(requests_mock: Mock) -> None:

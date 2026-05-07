@@ -2,12 +2,15 @@
 
 import pytest
 
+from datetime import datetime
+
 from meteofrance_api.helpers import get_phenomenon_name_from_indice
 from meteofrance_api.helpers import get_warning_text_status_from_indice_color
 from meteofrance_api.helpers import is_coastal_department
 from meteofrance_api.helpers import is_valid_warning_department
 from meteofrance_api.helpers import readable_phenomenons_dict
 from meteofrance_api.helpers import sort_places_versus_distance_from_coordinates
+from meteofrance_api.helpers import timestamp_to_datetime_with_locale_tz
 from meteofrance_api.model import Place
 from meteofrance_api.model.warning import PhenomenonMaxColor
 
@@ -74,6 +77,13 @@ def test_readable_phenomenons_dict() -> None:
     }
 
     assert readable_phenomenons_dict(api_list) == expected_dictionary
+
+
+def test_timestamp_to_datetime_with_locale_tz() -> None:
+    """Test conversion of a Unix timestamp to a timezone-aware datetime."""
+    dt = timestamp_to_datetime_with_locale_tz(1591279200, "Europe/Paris")
+    assert isinstance(dt, datetime)
+    assert str(dt) == "2020-06-04 16:00:00+02:00"
 
 
 def test_sort_places_versus_distance_from_coordinates() -> None:
