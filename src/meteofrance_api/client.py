@@ -13,13 +13,6 @@ from .model import Rain
 from .model import WarningDictionary
 from .session import MeteoFranceSession
 
-# TODO: investigate bulletincote, montagne, etc...
-#       http://ws.meteofrance.com/ws//getDetail/france/330630.json
-# TODO: add protection for warning if domain not valid
-# TODO: strategy for HTTP errors
-# TODO: next rain in minute. Necessary ?
-# TODO: forecast/metadata from ID to get gps ?
-
 
 class MeteoFranceClient:
     """Proxy to the Météo-France REST API.
@@ -146,7 +139,6 @@ class MeteoFranceClient:
         Returns:
             A Forecast instance representing the hourly and daily weather forecast.
         """
-        # TODO: add possibility to request forecast from id
 
         # Send the API request
         resp = self.session.request(
@@ -194,7 +186,6 @@ class MeteoFranceClient:
         Returns:
             A Rain instance representing the next hour rain forecast.
         """
-        # TODO: add protection if no rain forecast for this position
 
         # Send the API request
         resp = self.session.request(
@@ -268,7 +259,6 @@ class MeteoFranceClient:
         Returns:
             A warning.Full instance representing the complete weather alert bulletin.
         """
-        # TODO: add formatDate parameter
 
         # Send the API request
         resp = self.session.request(
@@ -341,8 +331,6 @@ class MeteoFranceClient:
             PictureOfTheDay instance with the URL and the description of the picture of
             the day.
         """
-        # Send the API request
-        # TODO: check if other value of domain are usable
 
         resp = self.session.request(
             "get",

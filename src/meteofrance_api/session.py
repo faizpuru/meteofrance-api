@@ -40,13 +40,7 @@ class MeteoFranceSession(Session):
         Returns:
             the Response object corresponding to the result of the API request.
         """
-        params_inputs = kwargs.pop("params", None)
-
-        params = {"token": self.access_token}
-        if params_inputs:
-            params.update(params_inputs)
-
-        kwargs["params"] = params
+        kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.access_token}"
         response = super().request(method, f"{self.host}/{path}", *args, **kwargs)
         response.raise_for_status()
 
