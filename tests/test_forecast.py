@@ -14,7 +14,6 @@ from meteofrance_api.model.forecast import ForecastPosition
 from meteofrance_api.model.forecast import HourlyForecast
 from meteofrance_api.model.forecast import ProbabilityForecast
 
-
 FORECAST_PAST_RESPONSE = {
     "update_time": "2020-05-20T17:00:00.000Z",
     "type": "Feature",

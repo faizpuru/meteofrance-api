@@ -7,7 +7,6 @@ from meteofrance_api.model import WarningDictionary
 from meteofrance_api.model.dictionary import ColorDictionaryEntry
 from meteofrance_api.model.dictionary import PhenomenonDictionaryEntry
 
-
 SAMPLE_DATA = {
     "phenomenons": [
         {"id": 1, "name": "Wind"},

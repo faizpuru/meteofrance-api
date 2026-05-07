@@ -5,7 +5,7 @@ from datetime import datetime
 
 
 @dataclass(repr=False)
-class Observation:
+class Observation:  # pylint: disable=too-many-instance-attributes
     """Class to access the results of a `v2/observation` API request.
 
     Attributes:
