@@ -1,4 +1,5 @@
 """Rain in the next hour Python model for the Météo-France REST API."""
+# pylint: disable=duplicate-code
 
 from dataclasses import dataclass
 from dataclasses import fields as dc_fields
@@ -10,7 +11,7 @@ from meteofrance_api.helpers import timestamp_to_datetime_with_locale_tz
 
 
 @dataclass
-class RainPosition:
+class RainPosition:  # pylint: disable=too-many-instance-attributes
     """Metadata about the rain forecast location."""
 
     altitude: int | None = None
@@ -24,6 +25,7 @@ class RainPosition:
 
     @classmethod
     def from_api_response(cls, properties: dict, coords: list) -> "RainPosition":
+        """Build a RainPosition from a v3/rain API response properties dict."""
         known = {f.name for f in dc_fields(cls)}
         data = {k: v for k, v in properties.items() if k in known}
         data["lat"] = coords[1]
@@ -41,6 +43,7 @@ class RainForecastEntry:
 
     @classmethod
     def from_dict(cls, data: dict) -> "RainForecastEntry":
+        """Build a RainForecastEntry from a raw API dict."""
         known = {f.name for f in dc_fields(cls)}
         return cls(**{k: v for k, v in data.items() if k in known})
 

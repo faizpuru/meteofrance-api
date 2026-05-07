@@ -22,6 +22,7 @@ class PhenomenonMaxColor:
 
     @classmethod
     def from_dict(cls, data: dict) -> "PhenomenonMaxColor":
+        """Build a PhenomenonMaxColor from a raw API dict."""
         return cls(
             phenomenon_id=data["phenomenon_id"],
             phenomenon_max_color_id=data["phenomenon_max_color_id"],

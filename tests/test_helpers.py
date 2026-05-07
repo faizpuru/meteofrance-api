@@ -1,8 +1,8 @@
 """Tests for meteofrance module. Helpers."""
 
-import pytest
-
 from datetime import datetime
+
+import pytest
 
 from meteofrance_api.helpers import get_phenomenon_name_from_indice
 from meteofrance_api.helpers import get_warning_text_status_from_indice_color

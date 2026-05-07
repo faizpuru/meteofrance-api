@@ -17,6 +17,7 @@ class PhenomenonDictionaryEntry:
 
     @classmethod
     def from_dict(cls, data: dict) -> "PhenomenonDictionaryEntry":
+        """Build a PhenomenonDictionaryEntry from a raw API dict."""
         return cls(id=data["id"], name=data["name"])
 
 
@@ -38,6 +39,7 @@ class ColorDictionaryEntry:
 
     @classmethod
     def from_dict(cls, data: dict) -> "ColorDictionaryEntry":
+        """Build a ColorDictionaryEntry from a raw API dict."""
         return cls(
             id=data["id"],
             level=data["level"],

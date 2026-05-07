@@ -9,7 +9,7 @@ from .const import METEOFRANCE_API_TOKEN
 from .const import METEOFRANCE_API_URL
 
 
-class MeteoFranceSession(Session):
+class MeteoFranceSession(Session):  # pylint: disable=too-few-public-methods
     """HTTP session manager for Météo-France.
 
     This session object allows to manage the authentication in the API using a token.
@@ -26,7 +26,7 @@ class MeteoFranceSession(Session):
         self.access_token = access_token or METEOFRANCE_API_TOKEN
         Session.__init__(self)
 
-    def request(  # type: ignore
+    def request(  # type: ignore[override]  # pylint: disable=arguments-differ
         self, method: str, path: str, *args: Any, **kwargs: Any
     ) -> Response:
         """Make a request using token authentication.
