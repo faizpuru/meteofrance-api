@@ -363,4 +363,4 @@ class MeteoFranceClient:
             f"&token={METEOFRANCE_API_TOKEN}"
         )
 
-        return PictureOfTheDay({"image_url": image_url, "description": resp.text})
+        return PictureOfTheDay(image_url=image_url, description=resp.text)
