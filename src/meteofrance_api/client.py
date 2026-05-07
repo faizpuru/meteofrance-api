@@ -101,7 +101,7 @@ class MeteoFranceClient:
             "v2/observation",
             params={"lat": latitude, "lon": longitude, "lang": language},
         )
-        return Observation(resp.json())
+        return Observation.from_api_response(resp.json())
 
     def get_observation_for_place(
         self,
