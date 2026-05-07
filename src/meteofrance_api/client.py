@@ -198,9 +198,9 @@ class MeteoFranceClient:
 
         # Send the API request
         resp = self.session.request(
-            "get", "rain", params={"lat": latitude, "lon": longitude, "lang": language}
+            "get", "v3/rain", params={"lat": latitude, "lon": longitude, "lang": language}
         )
-        return Rain(resp.json())
+        return Rain.from_api_response(resp.json())
 
     #
     # Warning

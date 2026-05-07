@@ -1,98 +1,101 @@
 """Rain in the next hour Python model for the Météo-France REST API."""
 
+from dataclasses import dataclass
+from dataclasses import fields as dc_fields
 from datetime import datetime
-from typing import Any
-from typing import TypedDict
+
+from pytz import timezone as pytz_timezone
 
 from meteofrance_api.helpers import timestamp_to_datetime_with_locale_tz
 
 
-class RainData(TypedDict):
-    """Describing the data structure of rain object returned by the REST API."""
+@dataclass
+class RainPosition:
+    """Metadata about the rain forecast location."""
 
-    position: dict[str, Any]
-    updated_on: int
-    forecast: list[dict[str, Any]]
-    quality: int
+    altitude: int | None = None
+    name: str | None = None
+    country: str | None = None
+    french_department: str | None = None
+    rain_product_available: int | None = None
+    timezone: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+
+    @classmethod
+    def from_api_response(cls, properties: dict, coords: list) -> "RainPosition":
+        known = {f.name for f in dc_fields(cls)}
+        data = {k: v for k, v in properties.items() if k in known}
+        data["lat"] = coords[1]
+        data["lon"] = coords[0]
+        return cls(**data)
 
 
+@dataclass
+class RainForecastEntry:
+    """One time-step of rain forecast data."""
+
+    time: str
+    rain_intensity: int | None = None
+    rain_intensity_description: str | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "RainForecastEntry":
+        known = {f.name for f in dc_fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in known})
+
+
+@dataclass
 class Rain:
-    """Class to access the results of 'rain' REST API request.
+    """Class to access the results of a `v2/rain` API request.
 
     Attributes:
-        position: A dictionary with metadata about the position of the forecast place.
-        updated_on:  A timestamp as int corresponding to the latest update date.
-        forecast: A list of dictionaries to describe the following next hour rain
-            forecast.
-        quality: An integer. Don't know yet the usage.
+        position: Metadata about the rain forecast location.
+        updated_on: Unix timestamp of the latest update.
+        forecast: List of rain forecast entries for the next hour.
+        confidence: Quality indicator of the rain forecast.
     """
 
-    def __init__(self, raw_data: RainData) -> None:
-        """Initialize a Rain object.
+    position: RainPosition
+    updated_on: int
+    forecast: list[RainForecastEntry]
+    confidence: int
 
-        Args:
-            raw_data: A dictionary representing the JSON response from 'rain' REST API
-                request. The structure is described by the RainData class.
-        """
-        self.raw_data = raw_data
-
-    @property
-    def position(self) -> dict[str, Any]:
-        """Return the position information of the rain forecast."""
-        return self.raw_data["position"]
-
-    @property
-    def updated_on(self) -> int:
-        """Return the update timestamp of the rain forecast."""
-        return self.raw_data["updated_on"]
-
-    @property
-    def forecast(self) -> list[dict[str, Any]]:
-        """Return the rain forecast."""
-        return self.raw_data["forecast"]
-
-    @property
-    def quality(self) -> int:
-        """Return the quality of the rain forecast."""
-        # TODO: don't know yet what is the usage
-        return self.raw_data["quality"]
+    @classmethod
+    def from_api_response(cls, raw_data: dict) -> "Rain":
+        """Build a Rain from a v2/rain API response dict."""
+        if "properties" not in raw_data:
+            raise ValueError("Rain forecast not available for this location.")
+        properties = raw_data["properties"]
+        coords = raw_data["geometry"]["coordinates"]
+        dt = datetime.fromisoformat(raw_data["update_time"].replace("Z", "+00:00"))
+        return cls(
+            position=RainPosition.from_api_response(properties, coords),
+            updated_on=int(dt.timestamp()),
+            forecast=[RainForecastEntry.from_dict(e) for e in properties["forecast"]],
+            confidence=properties.get("confidence", 0),
+        )
 
     def next_rain_date_locale(self) -> datetime | None:
-        """Estimate the date of the next rain in the Place timezone (Helper).
+        """Estimate the date of the next rain in the location timezone.
 
         Returns:
-            A datetime instance representing the date estimation of the next rain within
-            the next hour.
-            If no rain is expected in the following hour 'None' is returned.
-
-            The datetime use the location timezone.
+            A datetime of the next rain within the next hour, or None if no rain
+            is expected.
         """
-        # search first cadran with rain
         next_rain = next(
-            (cadran for cadran in self.forecast if cadran["rain"] > 1), None
+            (entry for entry in self.forecast if (entry.rain_intensity or 0) > 1),
+            None,
         )
-
-        next_rain_dt_local: datetime | None = None
-        if next_rain is not None:
-            # get the time stamp of the first cadran with rain
-            next_rain_timestamp = next_rain["dt"]
-            # convert timestamp in datetime with local timezone
-            next_rain_dt_local = timestamp_to_datetime_with_locale_tz(
-                next_rain_timestamp, self.position["timezone"]
-            )
-
-        return next_rain_dt_local
+        if next_rain is None:
+            return None
+        return self.iso_to_locale_time(next_rain.time)
 
     def timestamp_to_locale_time(self, timestamp: int) -> datetime:
-        """Convert timestamp in datetime with rain forecast location timezone (Helper).
+        """Convert a Unix timestamp to a datetime in the rain forecast location timezone."""
+        return timestamp_to_datetime_with_locale_tz(timestamp, self.position.timezone)
 
-        Args:
-            timestamp: An integer representing the UNIX timestamp.
-
-        Returns:
-            A datetime instance corresponding to the timestamp with the timezone of the
-                rain forecast location.
-        """
-        return timestamp_to_datetime_with_locale_tz(
-            timestamp, self.position["timezone"]
-        )
+    def iso_to_locale_time(self, iso_string: str) -> datetime:
+        """Convert an ISO 8601 string to a datetime in the rain forecast location timezone."""
+        dt_utc = datetime.fromisoformat(iso_string.replace("Z", "+00:00"))
+        return dt_utc.astimezone(pytz_timezone(self.position.timezone))
