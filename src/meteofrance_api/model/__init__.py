@@ -8,6 +8,7 @@ from .place import Place
 from .rain import Rain
 from .warning import CurrentPhenomenons
 from .warning import Full
+from .warning import PhenomenonMaxColor
 
 __all__ = [
     "Forecast",
@@ -17,5 +18,6 @@ __all__ = [
     "Rain",
     "CurrentPhenomenons",
     "Full",
+    "PhenomenonMaxColor",
     "WarningDictionary",
 ]
