@@ -34,6 +34,7 @@ def test_workflow(city: str) -> None:
         rain_status = "No rain forecast available."
 
     # Fetch weather alerts.
+    readable_warnings = None
     if my_place.admin2:
         my_place_weather_alerts = client.get_warning_current_phenomenons(
             my_place.admin2
@@ -44,4 +45,4 @@ def test_workflow(city: str) -> None:
 
     assert isinstance(my_place_daily_forecast, list)
     assert rain_status
-    assert isinstance(readable_warnings, dict)
+    assert readable_warnings is None or isinstance(readable_warnings, dict)

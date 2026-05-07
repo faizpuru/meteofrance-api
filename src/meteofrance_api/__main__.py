@@ -4,8 +4,20 @@ import argparse
 import json
 import sys
 from dataclasses import asdict
+from datetime import datetime
 
 from meteofrance_api import MeteoFranceClient
+
+
+def _local(iso_utc: str | None, fmt: str = "%Y-%m-%d %H:%M %Z") -> str:
+    """Convert a UTC ISO 8601 string to the system's local timezone."""
+    if iso_utc is None:
+        return "N/A"
+    return (
+        datetime.fromisoformat(iso_utc.replace("Z", "+00:00"))
+        .astimezone()
+        .strftime(fmt)
+    )
 
 
 def _resolve_coords(
@@ -29,10 +41,9 @@ def _resolve_coords(
     sys.exit(1)
 
 
-def _out(data: object, as_json: bool) -> None:
-    """Print data as JSON or delegate to the caller for human output."""
-    if as_json:
-        print(json.dumps(data, ensure_ascii=False, indent=2))
+def _out(data: object) -> None:
+    """Print data as JSON."""
+    print(json.dumps(data, ensure_ascii=False, indent=2))
 
 
 def cmd_places(args: argparse.Namespace) -> None:
@@ -41,7 +52,7 @@ def cmd_places(args: argparse.Namespace) -> None:
     results = client.search_places(args.query)
 
     if args.json:
-        _out([asdict(p) for p in results], as_json=True)
+        _out([asdict(p) for p in results])
         return
 
     if not results:
@@ -63,7 +74,7 @@ def cmd_forecast(args: argparse.Namespace) -> None:
     fc = client.get_forecast(lat, lon, language=args.lang)
 
     if args.json:
-        _out(asdict(fc), as_json=True)
+        _out(asdict(fc))
         return
 
     pos = fc.position
@@ -94,7 +105,7 @@ def cmd_rain(args: argparse.Namespace) -> None:
         data = asdict(rain)
         next_rain = rain.next_rain_date_locale()
         data["next_rain"] = next_rain.isoformat() if next_rain else None
-        _out(data, as_json=True)
+        _out(data)
         return
 
     pos = rain.position
@@ -111,8 +122,8 @@ def cmd_rain(args: argparse.Namespace) -> None:
     for entry in rain.forecast:
         t = rain.iso_to_locale_time(entry.time).strftime("%H:%M")
         intensity = entry.rain_intensity or 0
-        bar = "█" * intensity
-        print(f"  {t}  [{bar:<4}]  {entry.rain_intensity_description or ''}")
+        fill = "█" * intensity
+        print(f"  {t}  [{fill:<4}]  {entry.rain_intensity_description or ''}")
 
 
 def cmd_observation(args: argparse.Namespace) -> None:
@@ -122,10 +133,12 @@ def cmd_observation(args: argparse.Namespace) -> None:
     obs = client.get_observation(lat, lon, language=args.lang)
 
     if args.json:
-        _out(asdict(obs), as_json=True)
+        _out(asdict(obs))
         return
 
-    print(f"Time         : {obs.time_as_datetime.strftime('%Y-%m-%d %H:%M %Z') if obs.time_as_datetime else 'N/A'}")
+    dt = obs.time_as_datetime
+    local_time = dt.astimezone().strftime("%Y-%m-%d %H:%M %Z") if dt else "N/A"
+    print(f"Time         : {local_time}")
     print(f"Temperature  : {obs.temperature}°C")
     print(f"Wind         : {obs.wind_speed} km/h  dir {obs.wind_direction}°")
     print(f"Condition    : {obs.weather_description or 'N/A'}")
@@ -152,15 +165,36 @@ def cmd_warning(args: argparse.Namespace) -> None:
                 }
                 for p in phenomenons.phenomenons_max_colors
             ],
-        }, as_json=True)
+        })
         return
 
     print(f"Domain: {phenomenons.domain_id}  (max level: {phenomenons.get_domain_max_color()})")
     print()
     for p in phenomenons.phenomenons_max_colors:
         name = dictionary.get_phenomenon_name_by_id(int(p.phenomenon_id)) or p.phenomenon_id
-        color = dictionary.get_color_name_by_id(p.phenomenon_max_color_id) or str(p.phenomenon_max_color_id)
+        color = (
+            dictionary.get_color_name_by_id(p.phenomenon_max_color_id)
+            or str(p.phenomenon_max_color_id)
+        )
         print(f"  {name:<25} {color}")
+
+
+def cmd_ephemeris(args: argparse.Namespace) -> None:
+    """Show sunrise, sunset, moon phase and saint of the day."""
+    client = MeteoFranceClient()
+    lat, lon, _ = _resolve_coords(client, args.lat, args.lon, args.place)
+    eph = client.get_ephemeris(lat, lon, language=args.lang)
+
+    if args.json:
+        _out(asdict(eph))
+        return
+
+    print(f"Sunrise  : {_local(eph.sunrise_time, '%H:%M %Z')}")
+    print(f"Sunset   : {_local(eph.sunset_time, '%H:%M %Z')}")
+    print(f"Moonrise : {_local(eph.moonrise_time, '%H:%M %Z')}")
+    print(f"Moonset  : {_local(eph.moonset_time, '%H:%M %Z')}")
+    print(f"Moon     : {eph.moon_phase_description or 'N/A'}  ({eph.moon_phase})")
+    print(f"Saint    : {eph.saint or 'N/A'}")
 
 
 def cmd_picture(args: argparse.Namespace) -> None:  # pylint: disable=unused-argument
@@ -169,7 +203,7 @@ def cmd_picture(args: argparse.Namespace) -> None:  # pylint: disable=unused-arg
     pic = client.get_picture_of_the_day()
 
     if args.json:
-        _out(asdict(pic), as_json=True)
+        _out(asdict(pic))
         return
 
     print(f"URL  : {pic.image_url}")
@@ -218,6 +252,13 @@ def main() -> None:
     p_warn.add_argument("domain", help="Department number (e.g. 75) or 'france'")
     p_warn.set_defaults(func=cmd_warning)
 
+    # ephemeris
+    p_eph = sub.add_parser("ephemeris", help="Sunrise, sunset and moon phase")
+    p_eph.add_argument("--lat", type=float)
+    p_eph.add_argument("--lon", type=float)
+    p_eph.add_argument("--place", help="Place name (searched automatically)")
+    p_eph.set_defaults(func=cmd_ephemeris)
+
     # picture
     p_pic = sub.add_parser("picture", help="Picture of the day")
     p_pic.set_defaults(func=cmd_picture)
@@ -226,5 +267,5 @@ def main() -> None:
     args.func(args)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

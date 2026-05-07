@@ -1,6 +1,7 @@
 """Météo-France models for the REST API."""
 
 from .dictionary import WarningDictionary
+from .ephemeris import Ephemeris
 from .forecast import Forecast
 from .observation import Observation
 from .picture_of_the_day import PictureOfTheDay
@@ -11,6 +12,7 @@ from .warning import Full
 from .warning import PhenomenonMaxColor
 
 __all__ = [
+    "Ephemeris",
     "Forecast",
     "Observation",
     "Place",

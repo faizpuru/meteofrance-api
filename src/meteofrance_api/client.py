@@ -4,6 +4,7 @@ from .const import COASTAL_DEPARTMENT_LIST
 from .const import METEOFRANCE_API_TOKEN
 from .const import METEOFRANCE_API_URL
 from .model import CurrentPhenomenons
+from .model import Ephemeris
 from .model import Forecast
 from .model import Full
 from .model import Observation
@@ -351,3 +352,29 @@ class MeteoFranceClient:
         )
 
         return PictureOfTheDay(image_url=image_url, description=resp.text)
+
+    #
+    # Ephemeris
+    #
+    def get_ephemeris(
+        self,
+        latitude: float,
+        longitude: float,
+        language: str = "fr",
+    ) -> Ephemeris:
+        """Retrieve sunrise, sunset, moon phase and saint of the day for a location.
+
+        Args:
+            latitude: Latitude in degrees.
+            longitude: Longitude in degrees.
+            language: Optional; language code (default 'fr').
+
+        Returns:
+            An Ephemeris instance with sun and moon data for today.
+        """
+        resp = self.session.request(
+            "get",
+            "v2/ephemeris",
+            params={"lat": latitude, "lon": longitude, "lang": language},
+        )
+        return Ephemeris.from_api_response(resp.json())
