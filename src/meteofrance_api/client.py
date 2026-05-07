@@ -234,7 +234,7 @@ class MeteoFranceClient:
         )
 
         # Create object with API response
-        phenomenons = CurrentPhenomenons(resp.json())
+        phenomenons = CurrentPhenomenons.from_api_response(resp.json())
         # if user ask to have the coastal bulletin merged
         if with_coastal_bulletin:
             if domain in COASTAL_DEPARTMENT_LIST:
@@ -244,7 +244,7 @@ class MeteoFranceClient:
                     params={"domain": domain + "10"},
                 )
                 phenomenons.merge_with_coastal_phenomenons(
-                    CurrentPhenomenons(resp.json())
+                    CurrentPhenomenons.from_api_response(resp.json())
                 )
 
         return phenomenons
@@ -276,7 +276,7 @@ class MeteoFranceClient:
         )
 
         # Create object with API response
-        full_phenomenons = Full(resp.json())
+        full_phenomenons = Full.from_api_response(resp.json())
 
         # if user ask to have the coastal bulletin merged
         if with_coastal_bulletin:
@@ -286,7 +286,7 @@ class MeteoFranceClient:
                     "v3/warning/full",
                     params={"domain": domain + "10"},
                 )
-                full_phenomenons.merge_with_coastal_phenomenons(Full(resp.json()))
+                full_phenomenons.merge_with_coastal_phenomenons(Full.from_api_response(resp.json()))
 
         return full_phenomenons
 
