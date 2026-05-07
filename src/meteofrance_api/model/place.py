@@ -1,109 +1,53 @@
 """Place Python model for the Météo-France REST API."""
 
-from typing import TypedDict
+from dataclasses import dataclass
 
 
-class PlaceData(TypedDict):
-    """Describing the data structure of place object returned by the REST API."""
-
-    insee: str | None
-    name: str
-    lat: float
-    lon: float
-    country: str
-    admin: str
-    admin2: str | None
-    postCode: str | None  # noqa: N815
-
-
+@dataclass(repr=False)
 class Place:
-    """Class to access the results of 'places' REST API request.
+    """Class to access the results of a `v2/places` API request.
 
     Attributes:
-        insee: A string corresponding to the INSEE ID of the place.
         name: Name of the place.
-        lat: A float with the latitude in degree of the place.
-        lon: A float with the longitude in degree of the place
-        country: A string corresponding to the country code of the place.
-        admin: A string with the name of the administrative area ('Département' for
-            France and Region for other countries).
-        admin2: A string corresponding to an administrative code ('Département' number
-            for France)
-        postCode: A string corresponding to the ZIP code of location.
+        latitude: Latitude in degrees.
+        longitude: Longitude in degrees.
+        country: Country code (e.g. "FR").
+        insee: INSEE ID of the place (France only).
+        admin: Administrative area name (e.g. region or département).
+        admin2: Administrative code (e.g. département number for France).
+        postal_code: ZIP code of the location.
     """
 
-    def __init__(self, raw_data: PlaceData) -> None:
-        """Initialize a Place object.
+    name: str
+    latitude: float
+    longitude: float
+    country: str
+    insee: str | None = None
+    admin: str | None = None
+    admin2: str | None = None
+    postal_code: str | None = None
 
-        Args:
-            raw_data: A dictionary representing the JSON response from 'places' REST API
-                request. The structure is described by the PlaceData class.
-        """
-        self.raw_data = raw_data
+    @classmethod
+    def from_dict(cls, data: dict) -> "Place":
+        """Build a Place from a v2/places API response entry."""
+        return cls(
+            name=data["name"],
+            latitude=data["lat"],
+            longitude=data["lon"],
+            country=data["country"],
+            insee=data.get("insee"),
+            admin=data.get("admin"),
+            admin2=data.get("admin2"),
+            postal_code=data.get("postCode"),
+        )
 
     def __repr__(self) -> str:
-        """Return string representation of this class.
-
-        Returns:
-            A string to represent the instance of the Place class using the name,
-            country and admin area of the location.
-
-            Example: <Place(name=Montréal, country=FR, admin=Languedoc-Roussillon)>
-        """
-        return f"<{self.__class__.__name__}(name={self.name}, country={self.country}, admin={self.admin})>"
+        return (
+            f"<{self.__class__.__name__}"
+            f"(name={self.name}, country={self.country}, admin={self.admin})>"
+        )
 
     def __str__(self) -> str:
-        """Provide an easy way to identify the Place.
-
-        Returns:
-            A string to represent a Place instance with city name, Region name,
-            department ID and the country name.
-
-            For Examples:
-                `Marseille - Provence-Alpes-Côte d'Azur (13) - FR`
-                or `Montréal - Quebec - CA`
-        """
         if self.country == "FR":
             return f"{self.name} - {self.admin} ({self.admin2}) - {self.country}"
-
         return f"{self.name} - {self.admin} - {self.country}"
-
-    @property
-    def insee(self) -> str | None:
-        """Return the INSEE ID of the place."""
-        return self.raw_data.get("insee")
-
-    @property
-    def name(self) -> str:
-        """Return the name of the place."""
-        return self.raw_data["name"]
-
-    @property
-    def latitude(self) -> float:
-        """Return the latitude of the place."""
-        return self.raw_data["lat"]
-
-    @property
-    def longitude(self) -> float:
-        """Return the longitude of the place."""
-        return self.raw_data["lon"]
-
-    @property
-    def country(self) -> str:
-        """Return the country code of the place."""
-        return self.raw_data["country"]
-
-    @property
-    def admin(self) -> str | None:
-        """Return the admin of the place."""
-        return self.raw_data.get("admin")
-
-    @property
-    def admin2(self) -> str | None:
-        """Return the admin2 of the place."""
-        return self.raw_data.get("admin2")
-
-    @property
-    def postal_code(self) -> str | None:
-        """Return the postal code of the place."""
-        return self.raw_data.get("postCode")

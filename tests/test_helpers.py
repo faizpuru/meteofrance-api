@@ -9,7 +9,6 @@ from meteofrance_api.helpers import is_valid_warning_department
 from meteofrance_api.helpers import readable_phenomenons_dict
 from meteofrance_api.helpers import sort_places_versus_distance_from_coordinates
 from meteofrance_api.model import Place
-from meteofrance_api.model.place import PlaceData
 from meteofrance_api.model.warning import PhenomenonMaxColor
 
 
@@ -79,7 +78,7 @@ def test_readable_phenomenons_dict() -> None:
 
 def test_sort_places_versus_distance_from_coordinates() -> None:
     """Test the helper to order the Places list return by the search."""
-    json_places: list[PlaceData] = [
+    json_places: list[dict] = [
         {
             "insee": "11254",
             "name": "Montréal",
@@ -201,7 +200,7 @@ def test_sort_places_versus_distance_from_coordinates() -> None:
             "postCode": "null",
         },
     ]
-    list_places = [Place(place_data) for place_data in json_places]
+    list_places = [Place.from_dict(place_data) for place_data in json_places]
 
     # Sort Places by distance from Auch (32) coordinates.
     list_places_ordered = sort_places_versus_distance_from_coordinates(

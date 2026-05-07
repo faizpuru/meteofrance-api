@@ -69,8 +69,8 @@ class MeteoFranceClient:
             params["lon"] = longitude
 
         # Send the API request
-        resp = self.session.request("get", "places", params=params)
-        return [Place(place_data) for place_data in resp.json()]
+        resp = self.session.request("get", "v2/places", params=params)
+        return [Place.from_dict(place_data) for place_data in resp.json()]
 
     #
     # Observation
