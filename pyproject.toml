@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "meteofrance-api"
-version = "1.5.0"
+version = "2.0.0"
 description = "Python client for Météo-France API."
 authors = ["oncleben31 <oncleben31@gmail.com>", "quentame <polletquentin74@me.com>", "HACF <contact@hacf.fr>"]
 license = "MIT"
@@ -63,8 +63,7 @@ source = ["meteofrance_api"]
 
 [tool.coverage.report]
 show_missing = true
-# fail_under = 100 reduce targetwaiting for tests creation
-fail_under = 90
+fail_under = 100
 
 [tool.mypy]
 strict = true
