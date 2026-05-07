@@ -1,119 +1,93 @@
 """Dictionary Python model for the Météo-France REST API."""
 
-from typing import TypedDict
+from dataclasses import dataclass
 
 
-class PhenomenonDictionaryEntry(TypedDict):
-    """Represents a single meteorological phenomenon entry.
+@dataclass
+class PhenomenonDictionaryEntry:
+    """A single meteorological phenomenon entry.
 
     Attributes:
-        id: An integer representing the unique identifier of the phenomenon.
-        name: A string representing the name of the phenomenon.
+        id: Unique identifier of the phenomenon.
+        name: Name of the phenomenon.
     """
 
     id: int
     name: str
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "PhenomenonDictionaryEntry":
+        return cls(id=data["id"], name=data["name"])
 
-class ColorDictionaryEntry(TypedDict):
-    """Represents a single color entry used in meteorological warnings.
+
+@dataclass
+class ColorDictionaryEntry:
+    """A single color entry used in meteorological warnings.
 
     Attributes:
-        id: An integer representing the unique identifier of the color.
-        level: An integer representing the severity level associated with the color.
-        name: A string representing the name of the color.
-        hexaCode: A string representing the hexadecimal code of the color.
+        id: Unique identifier of the color.
+        level: Severity level associated with the color.
+        name: Name of the color.
+        hex_code: Hexadecimal color code.
     """
 
     id: int
     level: int
     name: str
-    hexaCode: str  # noqa: N815
+    hex_code: str
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "ColorDictionaryEntry":
+        return cls(
+            id=data["id"],
+            level=data["level"],
+            name=data["name"],
+            hex_code=data["hexaCode"],
+        )
 
 
-class WarningDictionaryData(TypedDict):
-    """Structured data representing the meteorological dictionary.
+@dataclass
+class WarningDictionary:
+    """Météo-France meteorological dictionary.
 
     Attributes:
-        phenomenons: A list of PhenomenonDictionaryEntry instances.
-        colors: A list of ColorDictionaryEntry instances.
+        phenomenons: List of meteorological phenomenon entries.
+        colors: List of warning color entries.
     """
 
     phenomenons: list[PhenomenonDictionaryEntry]
     colors: list[ColorDictionaryEntry]
 
+    @classmethod
+    def from_api_response(cls, raw_data: dict) -> "WarningDictionary":
+        """Build a WarningDictionary from a v3/warning/dictionary API response dict."""
+        return cls(
+            phenomenons=[
+                PhenomenonDictionaryEntry.from_dict(p)
+                for p in raw_data.get("phenomenons", [])
+            ],
+            colors=[
+                ColorDictionaryEntry.from_dict(c)
+                for c in raw_data.get("colors", [])
+            ],
+        )
 
-class WarningDictionary:
-    """A class to represent and manipulate the Météo-France meteorological dictionary data.
-
-    Methods:
-        get_phenomenon_name_by_id(phenomenon_id: int): Returns the name of the
-        phenomenon for the given ID.
-        get_color_name_by_id(color_id: int): Returns the name of the color for the given ID.
-    """
-
-    def __init__(self, raw_data: WarningDictionaryData) -> None:
-        """Initializes the WarningDictionary with raw dictionary data.
-
-        Args:
-            raw_data: A dictionary representing the JSON response from the Météo-France API.
-        """
-        self.raw_data = raw_data
-
-    def get_phenomenon_by_id(
-        self, phenomenon_id: int
-    ) -> PhenomenonDictionaryEntry | None:
-        """Retrieves a meteorological phenomenon based on its ID.
-
-        Args:
-            phenomenon_id: The ID of the meteorological phenomenon.
-
-        Returns:
-            The phenomenon if found, otherwise returns None.
-        """
-        for phenomenon in self.raw_data["phenomenons"]:
-            if phenomenon["id"] == phenomenon_id:
-                return phenomenon
-        return None
+    def get_phenomenon_by_id(self, phenomenon_id: int) -> PhenomenonDictionaryEntry | None:
+        """Return the phenomenon with the given ID, or None."""
+        return next(
+            (p for p in self.phenomenons if p.id == phenomenon_id), None
+        )
 
     def get_phenomenon_name_by_id(self, phenomenon_id: int) -> str | None:
-        """Retrieves the name of a meteorological phenomenon based on its ID.
-
-        Args:
-            phenomenon_id: The ID of the meteorological phenomenon.
-
-        Returns:
-            The name of the phenomenon if found, otherwise returns None.
-        """
+        """Return the name of the phenomenon with the given ID, or None."""
         phenomenon = self.get_phenomenon_by_id(phenomenon_id)
-        if phenomenon is not None:
-            return phenomenon["name"]
-        return None
+        return phenomenon.name if phenomenon is not None else None
 
     def get_color_by_id(self, color_id: int) -> ColorDictionaryEntry | None:
-        """Retrieves a warning color based on its ID.
-
-        Args:
-            color_id: The ID of the color.
-
-        Returns:
-            The the color object if found, otherwise returns None.
-        """
-        for color in self.raw_data["colors"]:
-            if color["id"] == color_id:
-                return color
-        return None
+        """Return the color with the given ID, or None."""
+        return next((c for c in self.colors if c.id == color_id), None)
 
     def get_color_name_by_id(self, color_id: int) -> str | None:
-        """Retrieves the name of a warning color based on its ID.
-
-        Args:
-            color_id: The ID of the color.
-
-        Returns:
-            The name of the color if found, otherwise returns None.
-        """
+        """Return the name of the color with the given ID, or None."""
         color = self.get_color_by_id(color_id)
-        if color is not None:
-            return color["name"]
-        return None
+        return color.name if color is not None else None
