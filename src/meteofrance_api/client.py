@@ -326,8 +326,7 @@ class MeteoFranceClient:
         resp = self.session.request(
             "get", "v3/warning/dictionary", params={"lang": language}
         )
-        dictionary = WarningDictionary(resp.json())
-        return dictionary
+        return WarningDictionary.from_api_response(resp.json())
 
     #
     # Picture of the day
