@@ -9,7 +9,7 @@ from .const import METEOFRANCE_API_TOKEN
 from .const import METEOFRANCE_API_URL
 
 
-class MeteoFranceSession(Session):
+class MeteoFranceSession(Session):  # pylint: disable=too-few-public-methods
     """HTTP session manager for Météo-France.
 
     This session object allows to manage the authentication in the API using a token.
@@ -26,7 +26,7 @@ class MeteoFranceSession(Session):
         self.access_token = access_token or METEOFRANCE_API_TOKEN
         Session.__init__(self)
 
-    def request(  # type: ignore
+    def request(  # type: ignore[override]  # pylint: disable=arguments-differ
         self, method: str, path: str, *args: Any, **kwargs: Any
     ) -> Response:
         """Make a request using token authentication.
@@ -40,13 +40,7 @@ class MeteoFranceSession(Session):
         Returns:
             the Response object corresponding to the result of the API request.
         """
-        params_inputs = kwargs.pop("params", None)
-
-        params = {"token": self.access_token}
-        if params_inputs:
-            params.update(params_inputs)
-
-        kwargs["params"] = params
+        kwargs.setdefault("headers", {})["Authorization"] = f"Bearer {self.access_token}"
         response = super().request(method, f"{self.host}/{path}", *args, **kwargs)
         response.raise_for_status()
 

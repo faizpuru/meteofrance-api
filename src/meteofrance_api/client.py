@@ -4,6 +4,7 @@ from .const import COASTAL_DEPARTMENT_LIST
 from .const import METEOFRANCE_API_TOKEN
 from .const import METEOFRANCE_API_URL
 from .model import CurrentPhenomenons
+from .model import Ephemeris
 from .model import Forecast
 from .model import Full
 from .model import Observation
@@ -12,13 +13,6 @@ from .model import Place
 from .model import Rain
 from .model import WarningDictionary
 from .session import MeteoFranceSession
-
-# TODO: investigate bulletincote, montagne, etc...
-#       http://ws.meteofrance.com/ws//getDetail/france/330630.json
-# TODO: add protection for warning if domain not valid
-# TODO: strategy for HTTP errors
-# TODO: next rain in minute. Necessary ?
-# TODO: forecast/metadata from ID to get gps ?
 
 
 class MeteoFranceClient:
@@ -69,8 +63,8 @@ class MeteoFranceClient:
             params["lon"] = longitude
 
         # Send the API request
-        resp = self.session.request("get", "places", params=params)
-        return [Place(place_data) for place_data in resp.json()]
+        resp = self.session.request("get", "v2/places", params=params)
+        return [Place.from_dict(place_data) for place_data in resp.json()]
 
     #
     # Observation
@@ -101,7 +95,7 @@ class MeteoFranceClient:
             "v2/observation",
             params={"lat": latitude, "lon": longitude, "lang": language},
         )
-        return Observation(resp.json())
+        return Observation.from_api_response(resp.json())
 
     def get_observation_for_place(
         self,
@@ -146,15 +140,14 @@ class MeteoFranceClient:
         Returns:
             A Forecast instance representing the hourly and daily weather forecast.
         """
-        # TODO: add possibility to request forecast from id
 
         # Send the API request
         resp = self.session.request(
             "get",
-            "forecast",
+            "v2/forecast",
             params={"lat": latitude, "lon": longitude, "lang": language},
         )
-        return Forecast(resp.json())
+        return Forecast.from_api_response(resp.json())
 
     def get_forecast_for_place(
         self,
@@ -194,13 +187,12 @@ class MeteoFranceClient:
         Returns:
             A Rain instance representing the next hour rain forecast.
         """
-        # TODO: add protection if no rain forecast for this position
 
         # Send the API request
         resp = self.session.request(
-            "get", "rain", params={"lat": latitude, "lon": longitude, "lang": language}
+            "get", "v3/rain", params={"lat": latitude, "lon": longitude, "lang": language}
         )
-        return Rain(resp.json())
+        return Rain.from_api_response(resp.json())
 
     #
     # Warning
@@ -234,7 +226,7 @@ class MeteoFranceClient:
         )
 
         # Create object with API response
-        phenomenons = CurrentPhenomenons(resp.json())
+        phenomenons = CurrentPhenomenons.from_api_response(resp.json())
         # if user ask to have the coastal bulletin merged
         if with_coastal_bulletin:
             if domain in COASTAL_DEPARTMENT_LIST:
@@ -244,7 +236,7 @@ class MeteoFranceClient:
                     params={"domain": domain + "10"},
                 )
                 phenomenons.merge_with_coastal_phenomenons(
-                    CurrentPhenomenons(resp.json())
+                    CurrentPhenomenons.from_api_response(resp.json())
                 )
 
         return phenomenons
@@ -268,7 +260,6 @@ class MeteoFranceClient:
         Returns:
             A warning.Full instance representing the complete weather alert bulletin.
         """
-        # TODO: add formatDate parameter
 
         # Send the API request
         resp = self.session.request(
@@ -276,7 +267,7 @@ class MeteoFranceClient:
         )
 
         # Create object with API response
-        full_phenomenons = Full(resp.json())
+        full_phenomenons = Full.from_api_response(resp.json())
 
         # if user ask to have the coastal bulletin merged
         if with_coastal_bulletin:
@@ -286,7 +277,7 @@ class MeteoFranceClient:
                     "v3/warning/full",
                     params={"domain": domain + "10"},
                 )
-                full_phenomenons.merge_with_coastal_phenomenons(Full(resp.json()))
+                full_phenomenons.merge_with_coastal_phenomenons(Full.from_api_response(resp.json()))
 
         return full_phenomenons
 
@@ -326,8 +317,7 @@ class MeteoFranceClient:
         resp = self.session.request(
             "get", "v3/warning/dictionary", params={"lang": language}
         )
-        dictionary = WarningDictionary(resp.json())
-        return dictionary
+        return WarningDictionary.from_api_response(resp.json())
 
     #
     # Picture of the day
@@ -342,8 +332,6 @@ class MeteoFranceClient:
             PictureOfTheDay instance with the URL and the description of the picture of
             the day.
         """
-        # Send the API request
-        # TODO: check if other value of domain are usable
 
         resp = self.session.request(
             "get",
@@ -363,4 +351,30 @@ class MeteoFranceClient:
             f"&token={METEOFRANCE_API_TOKEN}"
         )
 
-        return PictureOfTheDay({"image_url": image_url, "description": resp.text})
+        return PictureOfTheDay(image_url=image_url, description=resp.text)
+
+    #
+    # Ephemeris
+    #
+    def get_ephemeris(
+        self,
+        latitude: float,
+        longitude: float,
+        language: str = "fr",
+    ) -> Ephemeris:
+        """Retrieve sunrise, sunset, moon phase and saint of the day for a location.
+
+        Args:
+            latitude: Latitude in degrees.
+            longitude: Longitude in degrees.
+            language: Optional; language code (default 'fr').
+
+        Returns:
+            An Ephemeris instance with sun and moon data for today.
+        """
+        resp = self.session.request(
+            "get",
+            "v2/ephemeris",
+            params={"lat": latitude, "lon": longitude, "lang": language},
+        )
+        return Ephemeris.from_api_response(resp.json())
